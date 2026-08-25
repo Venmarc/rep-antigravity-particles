@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+tsconfig.tsbuildinfo
+
+# Copyright-sensitive: derived antigravity.google source (verbatim/beautified)
+research/ag-particles.pretty.js
+research/ag-morph.pretty.js
+research/ag-smooth.js
+
+# Live-site grab scripts (hit antigravity.google)
+scripts/grab-reference.mjs
+scripts/grab-main.mjs
+scripts/agdom.mjs
+
+# Reference screenshots of antigravity.google
+screenshots/reference/

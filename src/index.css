@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* ── Token setup gate (Pastries hard rule: tokens before components) ── */
+:root {
+  /* motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 200ms;
+  --duration-base: 350ms;
+  --duration-slow: 600ms;
+
+  /* shape */
+  --radius-capsule: 999px;
+  --radius-card: 20px;
+
+  /* shared ink */
+  --ink: #0b0b10;
+  --paper: #f7f6f2;
+
+  /* OX dark page */
+  --ox-bg: #050508;
+  --ox-fg: #eceef4;
+  --ox-dim: #8a8fa3;
+
+  /* Signal light page */
+  --sig-bg: #f7f6f2;
+  --sig-fg: #10131a;
+  --sig-dim: #5c6270;
+  --sig-accent: #346bf1;
+
+  /* Playground */
+  --pg-bg: #0d0f14;
+  --pg-fg: #e8eaf0;
+}
+
+* {
+  border: none;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    "Google Sans Flex", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
