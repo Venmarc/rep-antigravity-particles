@@ -9,7 +9,15 @@ interface DragState {
 
 /** Freely placeable container: drag anywhere except on interactive children.
  *  Transform-only movement; clamped to the viewport. */
-export default function DraggablePanel({ children }: { children: ReactNode }) {
+export default function DraggablePanel({
+  children,
+  className = "",
+  style,
+}: {
+  children: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<DragState | null>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -60,7 +68,7 @@ export default function DraggablePanel({ children }: { children: ReactNode }) {
       onPointerDown={onPointerDown}
       className={`relative flex flex-col items-center rounded-3xl p-6 backdrop-blur-md transition-shadow duration-300 ${
         dragging ? "cursor-grabbing shadow-2xl" : "cursor-grab"
-      }`}
+      } ${className}`}
       style={{
         transform: `translate(${pos.x}px, ${pos.y}px)`,
         background: "color-mix(in srgb, var(--panel-bg) 55%, transparent)",
@@ -68,6 +76,7 @@ export default function DraggablePanel({ children }: { children: ReactNode }) {
           ? "0 0 0 1px color-mix(in srgb, var(--panel-line) 60%, transparent)"
           : "0 0 0 1px transparent",
         touchAction: "none",
+        ...style,
       }}
       data-draggable-panel
       aria-label="Glyph controls. Drag from the background to move."

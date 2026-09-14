@@ -1,5 +1,6 @@
 import { CapsuleHeader } from "../components/capsule-header";
 import ParticleSwarmCanvas from "../components/particle-swarm";
+import SmoothScroll from "../components/smooth-scroll";
 
 const FEATURES = [
   {
@@ -20,11 +21,14 @@ const FEATURES = [
 ];
 
 /** Signal — fictional observability product page, light theme.
- *  Restrained glow: none on chrome; a single soft radial behind the hero canvas only. */
+ *  Restrained glow: none on chrome; a single soft radial behind the hero canvas only.
+ *  Fixed capsule header outside the smooth-scroll content (transform re-parents fixed). */
 export default function Signal() {
   return (
-    <div style={{ background: "var(--sig-bg)", color: "var(--sig-fg)" }}>
+    <>
       <CapsuleHeader />
+      <SmoothScroll>
+        <div style={{ background: "var(--sig-bg)", color: "var(--sig-fg)" }}>
       <section className="relative min-h-[92dvh] overflow-hidden">
         <ParticleSwarmCanvas
           className="absolute inset-0"
@@ -98,6 +102,8 @@ export default function Signal() {
           Open the playground
         </a>
       </section>
-    </div>
+        </div>
+      </SmoothScroll>
+    </>
   );
 }

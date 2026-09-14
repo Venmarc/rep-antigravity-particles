@@ -1,12 +1,43 @@
 import { useEffect, useRef } from "react";
-import type { ParticleSwarm, SwarmOptions } from "./engine";
+import type { GlyphSpec, ParticleSwarm, SwarmOptions } from "./engine";
 
 interface Props extends SwarmOptions {
   className?: string;
-  /** morph mode: current glyph */
-  glyph?: string;
+  /** morph mode: current glyph (string or positioned recipe) */
+  glyph?: GlyphSpec;
   /** morph mode: hover/active state */
   active?: boolean;
+}
+
+/**
+ * True only when a hardware GPU is positively identified.
+ *
+ * The probe creates a throwaway WebGL context. On a software rasteriser that
+ * can itself block the main thread for seconds, so the result is cached for the
+ * page and, crucially, an unrecognised/empty renderer string is treated as
+ * software: we take the slow, safe path rather than optimistically assuming a
+ * fast GPU and starting the engine inside the load window. (Reading the string
+ * as "not software unless it matches SwiftShader" was the bug — a failed probe
+ * yielded "", which read as *hardware* and started the engine at 800 ms.)
+ */
+let gpuProbe: boolean | null = null;
+function hasHardwareGPU(): boolean {
+  if (gpuProbe !== null) return gpuProbe;
+  let renderer = "";
+  try {
+    const gl = document
+      .createElement("canvas")
+      .getContext("webgl2") as WebGL2RenderingContext | null;
+    const ext = gl?.getExtension("WEBGL_debug_renderer_info");
+    if (gl && ext) renderer = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL));
+  } catch {
+    /* probe is best-effort */
+  }
+  gpuProbe =
+    /nvidia|geforce|radeon|\bamd\b|intel|apple|adreno|mali|powervr|videocore|rtx|gtx|iris|uhd graphics/i.test(
+      renderer,
+    );
+  return gpuProbe;
 }
 
 export default function ParticleSwarmCanvas({
@@ -61,18 +92,13 @@ export default function ParticleSwarmCanvas({
     // long quiet window: its frames and the engine eval are 10-50x costlier
     // and would block the main thread through the performance window. Real
     // GPUs start the field fast.
-    let renderer = "";
-    try {
-      const gl = document
-        .createElement("canvas")
-        .getContext("webgl2") as WebGL2RenderingContext | null;
-      const ext = gl?.getExtension("WEBGL_debug_renderer_info");
-      if (gl && ext) renderer = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL));
-    } catch {
-      /* renderer probe is best-effort */
-    }
-    const softwareGL = /swiftshader|llvmpipe|software|basic/i.test(renderer);
-    const delay = softwareGL ? 10000 : 800;
+    const softwareGL = !hasHardwareGPU();
+    // The long software-GL quiet window protects the audited main page's TBT
+    // budget, where the swarm mounts during load. Morph fields mount after load
+    // (hover-gated on the day page, or on their own route) and are the content,
+    // so they start promptly instead of showing a blank screen for ten seconds.
+    const deferForPerf = softwareGL && opts.mode !== "morph";
+    const delay = deferForPerf ? 10000 : softwareGL ? 2000 : 800;
 
     const begin = () => {
       if (disposed) return;
@@ -91,7 +117,16 @@ export default function ParticleSwarmCanvas({
           colors: colorsRef.current,
         });
         swarmRef.current = swarm;
-        (window as unknown as Record<string, unknown>).__swarm = swarm;
+        // test/probe handles: __swarm is the most recent engine; __swarms
+        // maps every live engine to its host so a probe can pick the one
+        // that owns a given field (the day page runs two at once)
+        const w = window as unknown as {
+          __swarm?: unknown;
+          __swarms?: { host: HTMLElement; swarm: ParticleSwarm }[];
+        };
+        w.__swarm = swarm;
+        w.__swarms = w.__swarms ?? [];
+        w.__swarms.push({ host, swarm });
         // replay props that arrived before the delayed engine load
         if (glyphRef.current !== undefined) swarm.setGlyph(glyphRef.current);
         if (activeRef.current !== undefined) swarm.setHover(activeRef.current);
@@ -140,6 +175,17 @@ export default function ParticleSwarmCanvas({
       ro?.disconnect();
       io?.disconnect();
       window.removeEventListener("pointermove", onMove);
+      // clear the test globals only if they still point at THIS engine: after a
+      // client-side route change the next swarm must own them, and a stale
+      // disposed engine would make the audit read the wrong canvas.
+      const w = window as unknown as {
+        __swarm?: unknown;
+        __swarms?: { host: HTMLElement; swarm: ParticleSwarm }[];
+      };
+      if (swarm && w.__swarm === swarm) delete w.__swarm;
+      if (swarm && w.__swarms) {
+        w.__swarms = w.__swarms.filter((e) => e.swarm !== swarm);
+      }
       swarm?.dispose();
       swarmRef.current = null;
     };

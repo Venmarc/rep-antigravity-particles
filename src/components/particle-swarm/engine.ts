@@ -152,8 +152,22 @@ function poissonDisc(
 /* Glyph rasterization -> morph target points                          */
 /* ------------------------------------------------------------------ */
 
+/** One positioned glyph in the 500x500 glyph space (multi-item recipes). */
+export interface GlyphItem {
+  text: string;
+  /** centre x in glyph space (0..500) */
+  x: number;
+  /** centre y in glyph space (0..500) */
+  y: number;
+  /** font size in glyph-space px */
+  size: number;
+}
+
+/** A glyph target: one auto-fitted centred string, or a positioned recipe. */
+export type GlyphSpec = string | GlyphItem[];
+
 export function sampleGlyph(
-  text: string,
+  spec: GlyphSpec,
   density = 60,
 ): { pts: [number, number][] } {
   const S = 500;
@@ -166,36 +180,46 @@ export function sampleGlyph(
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  let fontSize = 380;
-  ctx.font = `700 ${fontSize}px ui-sans-serif, system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
-  // shrink until it fits
-  while (
-    ctx.measureText(text).width > S * 0.86 &&
-    fontSize > 40
-  ) {
-    fontSize *= 0.85;
-    ctx.font = `700 ${Math.round(fontSize)}px ui-sans-serif, system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+  const font = (px: number) =>
+    `700 ${Math.round(px)}px ui-sans-serif, system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+
+  if (typeof spec === "string") {
+    let fontSize = 380;
+    ctx.font = font(fontSize);
+    // shrink until it fits
+    while (ctx.measureText(spec).width > S * 0.86 && fontSize > 40) {
+      fontSize *= 0.85;
+      ctx.font = font(fontSize);
+    }
+    ctx.fillText(spec, S / 2, S / 2 + fontSize * 0.05);
+  } else {
+    // recipe: draw every item at its own centre and size (hexagon, grid, ...)
+    for (const item of spec) {
+      ctx.font = font(item.size);
+      ctx.fillText(item.text, item.x, item.y);
+    }
   }
-  ctx.fillText(text, S / 2, S / 2 + fontSize * 0.05);
 
   const img = ctx.getImageData(0, 0, S, S).data;
-  // white-on-black raster: red channel = glyph luminance
-  // (alpha is 255 everywhere on the opaque canvas)
-  const alphaAt = (x: number, y: number): number => {
+  // white-on-black raster. Alpha is 255 everywhere on the opaque canvas, so
+  // mask on the brightest channel: correct for white type and for colour
+  // emoji alike (a red-only mask drops blue/cyan emoji interiors).
+  const maskAt = (x: number, y: number): number => {
     const xi = Math.max(0, Math.min(S - 1, Math.round(x)));
     const yi = Math.max(0, Math.min(S - 1, Math.round(y)));
-    return img[(yi * S + xi) * 4] / 255;
+    const o = (yi * S + xi) * 4;
+    return Math.max(img[o], img[o + 1], img[o + 2]) / 255;
   };
 
-  // Jittered grid sampling, glyph interior only (alpha > 0.5).
-  // Spacing tightens where alpha is high -> denser glyph cores.
+  // Jittered grid sampling, glyph interior only (mask > 0.5).
+  // Spacing tightens where mask is high -> denser glyph cores.
   const pts: [number, number][] = [];
   const step = 1.6 + (density / 300) * 3.2;
   for (let y = step / 2; y < S; y += step) {
     for (let x = step / 2; x < S; x += step) {
       const jx = x + (Math.random() - 0.5) * step;
       const jy = y + (Math.random() - 0.5) * step;
-      const a = alphaAt(jx, jy);
+      const a = maskAt(jx, jy);
       if (a > 0.5 && Math.random() < Math.pow(a, 1.5)) {
         pts.push([jx, jy]);
       }
@@ -726,10 +750,10 @@ export class ParticleSwarm {
     this.renderMat.uniforms.uColorScheme.value = theme === "dark" ? 0 : 1;
   }
 
-  /** Morph mode: retarget all particles to a glyph (any unicode/emoji). */
-  setGlyph(text: string) {
+  /** Morph mode: retarget all particles to a glyph (string or positioned recipe). */
+  setGlyph(spec: GlyphSpec) {
     if (this.mode !== "morph") return;
-    const { pts } = sampleGlyph(text, this.opts.density);
+    const { pts } = sampleGlyph(spec, this.opts.density);
     if (!pts.length) return;
     // nearest shape-point per base particle (brute force, runs once per glyph)
     const assign = new Float32Array(SIZE * SIZE * 4);

@@ -1,6 +1,6 @@
 # rep-antigravity-particles
 
-**Solo-variant Pastries rep.** One big element alone: the antigravity.google GPGPU particle swarm, rebuilt from the reverse-engineered spec, then remixed into an original three-page site (OX / Signal / Playground — all three concepts shipped as separate routes).
+**Solo-variant Pastries rep.** The antigravity.google GPGPU particle swarm, rebuilt from the reverse-engineered spec, then remixed into an original site: OX, Signal and Playground, plus **A working day** (`/day`) — a forward-only accordion of five "hours" in which two of the CTA morph fields were re-cast (the `{}` brace morph → a `%` symbol; the six-ring cluster → six emoji), each opening a full-page field view. OX, Signal and Day carry momentum-smoothed page scroll.
 
 ## Quick start
 
@@ -20,18 +20,20 @@ npm run build && npm run preview   # production audit (Lighthouse 95+ gate)
 - [x] Build hero swarm (GPGPU ping-pong, Three.js)
 - [x] Build morph variant (glyph/emoji shapes)
 - [x] Mobile/touch fallback decision
-- [x] Lighthouse 95+ gate — **Performance 98–99** (runs: 99/94/94/99/98/99; last two after route-split: 98, 99; post feel-check fixes: 99), A11y 100, BP 100, SEO 100
+- [x] Lighthouse 95+ gate — **Performance 99** (last runs: 99/99/99, TBT 30–50 ms, LCP 1.6–1.7 s), A11y 100, BP 100, SEO 100
 - [ ] Feel check round 2 (session 4 fixes in — needs Victor's eyes on real GPU)
 - [x] README + Playwright specs (`tests/effects.spec.mjs` — 6/6 pass)
 - [ ] Session log + glossary flip to `tried` (after feel check)
 
 ## What shipped
 
-Three routes (`src/main.tsx`, route-split via `React.lazy`):
+Routes (`src/main.tsx`, route-split via `React.lazy`; all reachable from the header nav):
 
 - **OX** (`/`) — dark hero. Ring-mode organism follows the cursor: Poisson-disc dust field, high-scale rim band, clean void around the anchor.
 - **Signal** (`/signal`) — light theme, blue→red gradient organism, capsule header detaches on scroll.
-- **Playground** (`/playground`) — type any glyph/emoji; particles stream into the shape (red-channel canvas sampling so color emoji work). Presets activate on click. Shape holds regardless of input focus; clearing the input sends the particles to rest. Intro/input/presets live in a draggable panel (`src/components/control-panel`), and a theme toggle switches between a deep-indigo dark and a warm-peach light palette (no pure white/black) via `engine.setTheme` (live uniform swap, no rebuild).
+- **Playground** (`/playground`) — type any glyph/emoji; particles stream into the shape (max-channel canvas sampling so colour emoji interiors survive). Presets activate on click. Shape holds regardless of input focus; clearing the input sends the particles to rest. Intro/input/presets live in a draggable panel (`src/components/control-panel`), and a theme toggle switches between a deep-indigo dark and a warm-peach light palette (no pure white/black) via `engine.setTheme` (live uniform swap, no rebuild).
+- **Day** (`/day`) — "A working day": a working day told as five clock hours, forward-only (a later hour collapses the current one instantly — a deliberate drawn motion rule). 09:00 (*the analyst*) forms `%`; 15:00 (*the crew*) forms six emojis in a hexagon. Hover forms the field, click opens it full-page (`/day/analyst`, `/day/crew`) with only a back button; the draggable caption note is theme-aware. Theme toggle persists across the field views.
+- **Smooth scroll** (`src/components/smooth-scroll`) — GSAP ScrollSmoother on OX / Signal / Day. Initialises on first interaction intent (wheel/pointer/touch/key), not on a timer: at load the gsap parse/eval is pure cost (pre-paint it delayed LCP to 2.9 s, on a timer it blew TBT to 1.4 s). The page scrolls natively until the first intent.
 
 Engine: `src/components/particle-swarm/engine.ts` (GPGPU ping-pong, ring + morph sim shaders, adaptive frame-skip). Wrapper: `src/components/particle-swarm/index.tsx` (deferred load, fade-in entrance, pointer/touch/reduced-motion handling).
 
@@ -48,11 +50,12 @@ The original's shipped values are in `research/ag-particles.pretty.js` + `script
 | density (ring) | 230 | 300 | rim population |
 | morph step/relaxation | .02/.1/.2 | .035/.18/.3 | frame-rate compensation for the adaptive frame-skip |
 | render scale | native | 0.75, MSAA off | fill-cost; pills are SDF-antialiased in-shader anyway |
-| first frame | immediate | after `load` + idle (0.8s hardware GL / 10s software GL) + 900ms fade-in | keeps main thread quiet through load; software-GL devices don't animate through it |
+| first frame | immediate | after `load` + idle (0.8s hardware GL / 10s software GL) + 900ms fade-in | keeps main thread quiet through load; software-GL devices don't animate through it. Hardware is only assumed when the probe positively recognises a GPU — an empty/unrecognised renderer string now takes the slow path (it previously read as "hardware" and started the engine inside the load window) |
+| smooth scroll | GSAP ScrollSmoother, created at init | same, created on first interaction intent | Lighthouse: creation during load delayed LCP to 2.9 s; on a short timer the gsap eval moved into the TBT window (1.4 s, TTI 7.6 s). Interaction-gated → LCP 1.7 s, TBT 30 ms |
 
 ## Debug tooling (`scripts/`, run with `NODE_PATH=~/.agents/playwright-core/node_modules`)
 
-- `audit-build.mjs` — full screenshot set + console error check → `screenshots/build-check/`
+- `audit-build.mjs` — full screenshot set + console error check → `screenshots/build-check/`. Covers OX / Signal / Playground / Day / the full-page field views / a smooth-scroll progression probe, and waits for each morph to actually settle (`waitFormed`, targeting the engine that owns a given field via `window.__swarms`).
 - `blobmap.mjs` — projects hi-scale state texels to screen px (geometry questions)
 - `knownscale.mjs` — freezes the sim, injects a known uniform scale, verifies the pointSize formula
 - `match-pills.mjs` — matches rendered pills to state texels (render/readback consistency)

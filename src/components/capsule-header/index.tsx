@@ -58,6 +58,9 @@ export function CapsuleHeader({ dark }: { dark?: boolean }) {
         <HeaderLink to="/playground" dark={dark}>
           Playground
         </HeaderLink>
+        <HeaderLink to="/day" dark={dark}>
+          Day
+        </HeaderLink>
       </nav>
     </header>
   );
@@ -118,6 +121,7 @@ export function FadeHeader() {
           <FadeLink to="/">OX</FadeLink>
           <FadeLink to="/signal">Signal</FadeLink>
           <FadeLink to="/playground">Playground</FadeLink>
+          <FadeLink to="/day">Day</FadeLink>
         </div>
       </nav>
     </header>
